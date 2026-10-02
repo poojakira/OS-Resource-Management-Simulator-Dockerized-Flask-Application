@@ -86,7 +86,7 @@ Open:
 http://127.0.0.1:8000
 ```
 
-The development entry point binds to `0.0.0.0:8000` with debug mode disabled. If you expose it beyond localhost, use normal host/network security controls. This project has no authentication and is not intended as an Internet-facing service.
+The development entry point binds to `127.0.0.1:8000` with debug mode disabled. The Docker image uses Gunicorn inside the container and should be published only to the interface you intend. This project has no authentication and is not intended as an Internet-facing service.
 
 ### Docker
 
