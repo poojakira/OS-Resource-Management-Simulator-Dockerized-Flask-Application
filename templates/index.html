@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OS Resource Management Simulator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main>
+    <h1>OS Resource Management Simulator</h1>
+    <p class="note">
+      Educational Flask application based on Fall 2024 operating-systems coursework.
+      State is intentionally stored in memory.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Resource</th>
+          <th scope="col">Status</th>
+          <th scope="col">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tool, status in resources.items() %}
+        <tr>
+          <td>{{ tool }}</td>
+          <td class="{{ status|lower }}">{{ status }}</td>
+          <td>
+            {% if status == "Available" %}
+            <form method="post" action="{{ url_for('allocate_resource', tool=tool) }}">
+              <button type="submit">Allocate</button>
+            </form>
+            {% else %}
+            <form method="post" action="{{ url_for('release_resource', tool=tool) }}">
+              <button type="submit">Release</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="post" action="{{ url_for('reset_resources') }}">
+      <button type="submit">Reset all resources</button>
+    </form>
+  </main>
+</body>
+</html>
