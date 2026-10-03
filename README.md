@@ -79,3 +79,8 @@ The original coursework was completed Nov. 30-Dec. 1, 2024. The production contr
 ## License
 
 MIT.
+
+## Product validation
+
+This repository separates **implementation evidence**, **public/external interoperability checks**, and **real deployment or customer evidence**. See [PRODUCT_VALIDATION.md](PRODUCT_VALIDATION.md) for the current validation ladder, reproducible checks, and the claims that are deliberately out of scope. A passing test or public-data canary is not presented as customer adoption or universal production efficacy.
+
