@@ -1,0 +1,55 @@
+﻿services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: resource_control
+      POSTGRES_USER: resource_control
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - resource-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resource_control -d resource_control"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  migrate:
+    build: .
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://resource_control:${POSTGRES_PASSWORD}@db:5432/resource_control
+      RESOURCE_API_KEYS: ${RESOURCE_API_KEYS:?set RESOURCE_API_KEYS}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://resource_control:${POSTGRES_PASSWORD}@db:5432/resource_control
+      RESOURCE_API_KEYS: ${RESOURCE_API_KEYS:?set RESOURCE_API_KEYS}
+      DEFAULT_LEASE_TTL_SECONDS: ${DEFAULT_LEASE_TTL_SECONDS:-1800}
+      MAX_LEASE_TTL_SECONDS: ${MAX_LEASE_TTL_SECONDS:-86400}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+      REQUEST_MAX_BYTES: ${REQUEST_MAX_BYTES:-65536}
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+    ports:
+      - "127.0.0.1:${HOST_PORT:-18080}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  resource-db:
