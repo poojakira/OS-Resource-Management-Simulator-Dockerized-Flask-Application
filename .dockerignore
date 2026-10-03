@@ -10,3 +10,6 @@ tests
 *.docx
 *.png
 .env*
+
+migration_check.db
+.env

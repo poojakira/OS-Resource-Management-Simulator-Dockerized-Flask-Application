@@ -1,160 +1,81 @@
-# OS Resource Management Simulator & Dockerized Flask Application
+﻿# Resource Control Plane
 
-A small Flask application that demonstrates operating-system resource allocation concepts through a kitchen-tool metaphor. The original coursework was completed for **IFT 510: Principles of Computer & Information Technology Architecture, Fall 2024**. Lab 1 implemented the Flask/Jinja2 resource-allocation interface; Lab 2 containerized the application with Docker.
+A production-oriented lease service for coordinating exclusive shared resources such as GPU nodes, lab equipment, mobile test devices, staging environments, or other scarce assets.
 
-> **Coursework date:** Nov. 30-Dec. 1, 2024  
-> **Public repository:** published and cleaned for portfolio use in 2026  
-> **Scope:** educational systems/web-development project, not a production resource scheduler
+This project began as an IFT 510 Fall 2024 Flask/Docker resource-management lab. The maintained implementation evolves that idea into a durable control plane with PostgreSQL state, authenticated roles, expiring leases, atomic acquisition, idempotent retries, audit history, metrics, migrations, and hardened containers.
 
-## What the simulator does
+## Real-world use cases
 
-The application tracks four shared resources:
+- reserve a GPU before an automated benchmark
+- claim a physical iOS/Android test device for CI
+- coordinate a hardware-security lab bench
+- lease a staging environment to one deployment job at a time
+- reserve specialized shared equipment for an automated workflow
 
-- Stove
-- Oven
-- Mixer
-- Knife
+## Production guarantees
 
-Each resource is either **Available** or **Occupied**. Users can allocate an available resource, release an occupied resource, or reset the simulator. The interface is rendered with Jinja2 and the state is managed by Flask.
+- one active lease per resource through an atomic conditional database update
+- lease TTLs so abandoned clients cannot hold a resource indefinitely
+- explicit renew and release operations
+- retry-safe acquisition with Idempotency-Key
+- reader, operator, and admin bearer-token roles
+- durable PostgreSQL resource, lease, idempotency, and audit records
+- request IDs, JSON request logs, liveness, readiness, and Prometheus metrics
+- bounded request bodies and per-process abuse throttling
+- Alembic schema migrations
+- non-root, read-only application container with Linux capabilities dropped
+- PostgreSQL concurrency tests, lint, Bandit, pip-audit, migrations, Docker, and Compose gates in CI
 
-This mirrors the basic idea of an operating system coordinating access to shared resources, but it is intentionally a simplified teaching model. It does not implement real CPU scheduling, deadlock detection, persistence, distributed locking, or kernel-level resource management.
+See docs/ARCHITECTURE.md for the design and failure model.
 
-## 2024 coursework vs. maintained public version
+## Quick start
 
-The original Fall 2024 submission used:
-
-- Flask
-- Jinja2
-- an in-memory Python dictionary for resource state
-- GET requests that changed resource state
-- Flask debug mode
-- a basic Python 3.9 Docker image
-
-The maintained public version preserves the assignment concept while correcting issues that should not remain in a public repository:
-
-- state-changing actions use **POST**
-- resources can be both allocated and released
-- unknown resources return **404**
-- in-process state changes are protected with a lock
-- Flask debug mode is disabled
-- a health endpoint is provided
-- basic security headers are added
-- Docker runs as a non-root user
-- dependencies are pinned
-- virtual environments and local environment files are ignored
-- automated tests, linting, dependency auditing, and a Docker build check run in GitHub Actions
-- student identifiers and bundled virtual environments from the original submission are not published in the maintained source tree
-
-See [docs/COURSEWORK_PROVENANCE.md](docs/COURSEWORK_PROVENANCE.md) for the evidence boundary and modernization notes.
-
-## Architecture
-
-```text
-Browser
-   |
-   v
-Flask / Jinja2
-   |
-   +--> GET  /                         render current state
-   +--> POST /resource/<name>/allocate
-   +--> POST /resource/<name>/release
-   +--> POST /reset
-   +--> GET  /health
-   |
-   v
-In-memory resource state
-(single Gunicorn worker, thread-safe updates)
-```
-
-## Run locally
-
-### Python
+Copy .env.example to .env, replace every placeholder with strong random values, and do not commit .env.
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-# Windows PowerShell: .\.venv\Scripts\Activate.ps1
-
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python app.py
+docker compose up -d --build
 ```
 
-Open:
+The API binds only to localhost using HOST_PORT, defaulting to 18080. Set HOST_PORT locally if that port is already in use.
 
-```text
-http://127.0.0.1:8000
-```
+## API roles
 
-The development entry point binds to `127.0.0.1:8000` with debug mode disabled. The Docker image uses Gunicorn inside the container and should be published only to the interface you intend. This project has no authentication and is not intended as an Internet-facing service.
+| Role | Capabilities |
+| --- | --- |
+| reader | list resources and leases, read metrics |
+| operator | reader + acquire, renew, release |
+| admin | operator + create/delete resources, read audit history |
 
-### Docker
+A competing acquisition receives HTTP 409 until the lease is released or expires.
+
+## Verification
 
 ```bash
-docker build -t os-resource-simulator .
-docker run --rm -p 127.0.0.1:8000:8000 os-resource-simulator
-```
-
-Then open `http://127.0.0.1:8000`.
-
-The container uses one Gunicorn worker because the simulator intentionally keeps state in process memory. Multiple workers would each maintain separate state.
-
-## Test and verify
-
-```bash
-python -m pip install -r requirements-dev.txt
 python -m ruff check .
 python -m pytest
-python -m bandit -q -r app.py
+python -m bandit -q -r resource_control wsgi.py
 python -m pip_audit -r requirements.txt
-docker build -t os-resource-simulator .
+alembic upgrade head
+docker build -t resource-control-plane .
+docker compose config --quiet
 ```
 
-GitHub Actions runs the same quality/security checks on public repository changes.
+CI runs tests against PostgreSQL and includes a two-client concurrency test proving that only one contender can win a lease.
 
-## Security and limitations
+## Zero-cost development and validation
 
-This project is intentionally small, but the maintained version avoids several unsafe defaults from the classroom prototype:
+This repository requires no paid external service for local development or validation. The reference stack uses local Docker, PostgreSQL, open-source Python tooling, and no managed cloud database, paid API, SaaS monitoring service, or paid security scanner. Repository CI uses the standard public-repository Ubuntu runner and does not upload build artifacts or use workflow caches.
 
-- no Flask debug server in the container
-- no state mutation through GET requests
-- no arbitrary resource names
-- non-root container user
-- pinned runtime dependencies
-- response headers that restrict framing, MIME sniffing, referrer leakage, and off-origin content loading
-- no committed `.env`, virtual environment, credentials, or student identifier
+Optional production infrastructure is deliberately left to the deployer; nothing in this repository automatically provisions or purchases cloud resources.
 
-Remaining limitations:
+## Deployment boundaries
 
-- state is in memory and resets when the process restarts
-- one process owns the authoritative state
-- there is no authentication or authorization
-- the lock protects threads in one process only
-- the project is an educational simulation, not a production scheduler or inventory platform
+The included Compose stack is a hardened single-host reference deployment. An Internet-facing deployment should additionally provide TLS, a controlled ingress, global rate limiting, secret-manager-backed credentials, PostgreSQL backups, monitoring, and tested restore procedures.
 
-## Resume-safe description
+## 2024 provenance
 
-**OS Resource Management Simulator & Dockerized Flask Application | Python, Flask, Jinja2, Docker | Dec. 2024**
-
-Built a Flask/Jinja2 educational simulator for shared-resource allocation and containerized it with Docker, demonstrating resource-state management, request handling, and portable application deployment.
-
-## Repository structure
-
-```text
-.
-├── .github/workflows/ci.yml
-├── docs/COURSEWORK_PROVENANCE.md
-├── static/style.css
-├── templates/index.html
-├── tests/test_app.py
-├── app.py
-├── Dockerfile
-├── requirements.txt
-├── requirements-dev.txt
-├── pyproject.toml
-└── SECURITY.md
-```
+The original coursework was completed Nov. 30-Dec. 1, 2024. The production control-plane architecture was added later and is documented separately from the original lab in docs/COURSEWORK_PROVENANCE.md.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT.

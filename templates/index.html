@@ -3,49 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OS Resource Management Simulator</title>
+  <title>Resource Control Plane</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <main>
-    <h1>OS Resource Management Simulator</h1>
-    <p class="note">
-      Educational Flask application based on Fall 2024 operating-systems coursework.
-      State is intentionally stored in memory.
+    <p class="eyebrow">RESOURCE CONTROL PLANE</p>
+    <h1>Exclusive shared-resource leases with durable state.</h1>
+    <p>
+      A production-oriented evolution of a Fall 2024 OS resource-management lab.
+      Coordinate GPU nodes, lab devices, staging environments, and other scarce assets
+      through authenticated, expiring leases.
     </p>
-
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">Resource</th>
-          <th scope="col">Status</th>
-          <th scope="col">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for tool, status in resources.items() %}
-        <tr>
-          <td>{{ tool }}</td>
-          <td class="{{ status|lower }}">{{ status }}</td>
-          <td>
-            {% if status == "Available" %}
-            <form method="post" action="{{ url_for('allocate_resource', tool=tool) }}">
-              <button type="submit">Allocate</button>
-            </form>
-            {% else %}
-            <form method="post" action="{{ url_for('release_resource', tool=tool) }}">
-              <button type="submit">Release</button>
-            </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-    <form method="post" action="{{ url_for('reset_resources') }}">
-      <button type="submit">Reset all resources</button>
-    </form>
+    <section>
+      <h2>Operational endpoints</h2>
+      <ul>
+        <li><code>GET /healthz</code> liveness</li>
+        <li><code>GET /readyz</code> database readiness</li>
+        <li><code>GET /metrics</code> authenticated Prometheus metrics</li>
+        <li><code>/api/v1/*</code> authenticated resource and lease API</li>
+      </ul>
+    </section>
   </main>
 </body>
 </html>

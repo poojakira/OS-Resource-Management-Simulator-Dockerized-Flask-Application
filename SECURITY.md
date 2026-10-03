@@ -1,20 +1,23 @@
 # Security Policy
 
-## Supported scope
+## Implemented controls
 
-This repository is an educational Flask/Docker project. It is maintained to avoid unsafe defaults and to keep the public source clean, but it is not an authenticated production service.
+- bearer credentials with reader/operator/admin roles
+- no credentials written to the database or request logs
+- bounded request bodies
+- state changes restricted to POST/DELETE
+- atomic database-backed lease claims
+- lease expiration, renewal, and release
+- transaction-scoped idempotency records
+- structured audit events and request IDs
+- authenticated Prometheus metrics
+- per-process abuse throttling
+- non-root read-only application container
+- dropped Linux capabilities and no-new-privileges
+- dependency, static-analysis, migration, PostgreSQL concurrency, Docker, and Compose CI gates
 
-## Reporting a problem
+## Production requirements
 
-Use the repository's GitHub Issues for non-sensitive bugs. For a security issue that should not be public, use GitHub's private vulnerability reporting feature if it is enabled for the repository.
+Terminate TLS at a controlled ingress, store credentials in a secret manager, keep PostgreSQL private and backed up, configure trusted proxy hops only for a known proxy chain, apply a distributed rate limit for multi-replica deployments, and test database restore procedures.
 
-Do not include credentials, access tokens, private keys, personal identifiers, or other secrets in an issue.
-
-## Security expectations
-
-- Do not commit populated `.env` files or virtual environments.
-- Keep runtime dependencies pinned and review dependency-audit failures.
-- Keep Flask debug mode disabled in shared or containerized environments.
-- Use the Docker image as a non-root user.
-- Treat the in-memory state model as single-process educational state, not durable or distributed state.
-- Do not expose the application directly to the public Internet without adding authentication, authorization, CSRF protection, TLS termination, and production monitoring.
+Do not place credentials, private infrastructure data, database URLs, or other secrets in public issues. Use private vulnerability reporting when available.
