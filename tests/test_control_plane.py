@@ -226,3 +226,51 @@ def test_audit_records_resource_and_lease_events(
     audit = client.get("/api/v1/audit", headers=admin_headers)
     event_types = {item["event_type"] for item in audit.get_json()["items"]}
     assert {"resource.created", "lease.acquired"} <= event_types
+
+
+def test_fencing_token_increases_across_lease_holders(
+    client, admin_headers, operator_headers
+):
+    create_resource(client, admin_headers)
+
+    first = client.post(
+        "/api/v1/resources/gpu-a/leases",
+        headers=operator_headers,
+        json={"owner": "team-a", "purpose": "first", "ttl_seconds": 300},
+    )
+    assert first.status_code == 201
+    first_body = first.get_json()
+    assert first_body["fencing_token"] == 1
+
+    client.delete(
+        f"/api/v1/leases/{first_body['id']}",
+        headers=operator_headers,
+    )
+    second = client.post(
+        "/api/v1/resources/gpu-a/leases",
+        headers=operator_headers,
+        json={"owner": "team-b", "purpose": "second", "ttl_seconds": 300},
+    )
+    assert second.status_code == 201
+    second_body = second.get_json()
+    assert second_body["fencing_token"] == 2
+    assert second_body["fencing_token"] > first_body["fencing_token"]
+
+    resource = client.get("/api/v1/resources/gpu-a", headers=admin_headers).get_json()
+    assert resource["fencing_token"] == second_body["fencing_token"]
+
+
+def test_idempotent_replay_preserves_same_fencing_token(
+    client, admin_headers, operator_headers
+):
+    create_resource(client, admin_headers)
+    headers = {**operator_headers, "Idempotency-Key": "fence-request-1"}
+    body = {"owner": "team-a", "purpose": "fenced-job", "ttl_seconds": 300}
+
+    first = client.post("/api/v1/resources/gpu-a/leases", headers=headers, json=body)
+    replay = client.post("/api/v1/resources/gpu-a/leases", headers=headers, json=body)
+
+    assert first.status_code == 201
+    assert replay.status_code == 200
+    assert replay.headers["Idempotency-Replayed"] == "true"
+    assert replay.get_json()["fencing_token"] == first.get_json()["fencing_token"] == 1
