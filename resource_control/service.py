@@ -120,6 +120,7 @@ class ResourceService:
             "acquired_at": iso(lease["acquired_at"]),
             "expires_at": iso(lease["expires_at"]),
             "released_at": iso(lease["released_at"]),
+            "fencing_token": lease["fencing_token"],
         }
 
     def resource_payload(self, conn, resource: dict[str, Any]) -> dict[str, Any]:
@@ -136,6 +137,7 @@ class ResourceService:
             "kind": resource["kind"],
             "metadata": json.loads(resource["metadata_json"] or "{}"),
             "available": active is None,
+            "fencing_token": resource["fencing_token"],
             "active_lease": active,
         }
 
@@ -164,6 +166,7 @@ class ResourceService:
                     kind=kind.strip()[:64],
                     metadata_json=json.dumps(metadata_value, sort_keys=True),
                     active_lease_id=None,
+                    fencing_token=0,
                     created_at=utcnow(),
                     deleted_at=None,
                 )
@@ -309,10 +312,17 @@ class ResourceService:
                 .where(resources.c.id == resource_id)
                 .where(resources.c.deleted_at.is_(None))
                 .where(resources.c.active_lease_id.is_(None))
-                .values(active_lease_id=lease_id)
+                .values(
+                    active_lease_id=lease_id,
+                    fencing_token=resources.c.fencing_token + 1,
+                )
             )
             if claimed.rowcount != 1:
                 raise ServiceError(409, "resource_busy", "resource was acquired concurrently")
+
+            fencing_token = conn.execute(
+                sa.select(resources.c.fencing_token).where(resources.c.id == resource_id)
+            ).scalar_one()
 
             conn.execute(
                 sa.insert(leases).values(
@@ -324,6 +334,7 @@ class ResourceService:
                     acquired_at=now,
                     expires_at=now + timedelta(seconds=ttl),
                     released_at=None,
+                    fencing_token=fencing_token,
                 )
             )
             self._audit(
@@ -332,7 +343,11 @@ class ResourceService:
                 actor,
                 resource_id=resource_id,
                 lease_id=lease_id,
-                detail={"owner": owner.strip(), "ttl_seconds": ttl},
+                detail={
+                    "owner": owner.strip(),
+                    "ttl_seconds": ttl,
+                    "fencing_token": fencing_token,
+                },
             )
             lease = conn.execute(
                 sa.select(leases).where(leases.c.id == lease_id)

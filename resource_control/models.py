@@ -12,6 +12,7 @@ resources = Table(
     Column("kind", String(64), nullable=False),
     Column("metadata_json", Text, nullable=False, default="{}"),
     Column("active_lease_id", String(36), nullable=True, index=True),
+    Column("fencing_token", Integer, nullable=False, default=0),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("deleted_at", DateTime(timezone=True), nullable=True, index=True),
 )
@@ -33,6 +34,7 @@ leases = Table(
     Column("acquired_at", DateTime(timezone=True), nullable=False),
     Column("expires_at", DateTime(timezone=True), nullable=False, index=True),
     Column("released_at", DateTime(timezone=True), nullable=True),
+    Column("fencing_token", Integer, nullable=False),
 )
 
 audit_events = Table(

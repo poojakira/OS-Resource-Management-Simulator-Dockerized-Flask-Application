@@ -18,6 +18,7 @@ This project began as an IFT 510 Fall 2024 Flask/Docker resource-management lab.
 - lease TTLs so abandoned clients cannot hold a resource indefinitely
 - explicit renew and release operations
 - retry-safe acquisition with Idempotency-Key
+- monotonically increasing fencing tokens on successful acquisitions so downstream resource adapters can reject stale lease holders
 - reader, operator, and admin bearer-token roles
 - durable PostgreSQL resource, lease, idempotency, and audit records
 - request IDs, JSON request logs, liveness, readiness, and Prometheus metrics
@@ -46,7 +47,7 @@ The API binds only to localhost using HOST_PORT, defaulting to 18080. Set HOST_P
 | operator | reader + acquire, renew, release |
 | admin | operator + create/delete resources, read audit history |
 
-A competing acquisition receives HTTP 409 until the lease is released or expires.
+A competing acquisition receives HTTP 409 until the lease is released or expires. Every successful acquisition returns a `fencing_token`; a newer holder always receives a larger token. Downstream systems that perform work on the leased resource should persist/compare that token and reject stale holders. The control plane emits the token but cannot enforce it inside an unrelated external device or service.
 
 ## Verification
 
