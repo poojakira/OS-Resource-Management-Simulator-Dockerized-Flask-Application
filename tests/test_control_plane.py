@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import pytest
 
@@ -169,9 +169,7 @@ def test_renew_active_lease(client, admin_headers, operator_headers):
     assert response.get_json()["status"] == "active"
 
 
-def test_invalid_ttl_and_mutating_get_are_rejected(
-    client, admin_headers, operator_headers
-):
+def test_invalid_ttl_and_mutating_get_are_rejected(client, admin_headers, operator_headers):
     create_resource(client, admin_headers)
 
     invalid = client.post(
@@ -180,9 +178,7 @@ def test_invalid_ttl_and_mutating_get_are_rejected(
         json={"owner": "team-a", "purpose": "run", "ttl_seconds": 1},
     )
     assert invalid.status_code == 400
-    assert client.get(
-        "/api/v1/resources/gpu-a/leases", headers=operator_headers
-    ).status_code == 405
+    assert client.get("/api/v1/resources/gpu-a/leases", headers=operator_headers).status_code == 405
 
 
 def test_metrics_and_security_headers(client, reader_headers):
@@ -196,9 +192,7 @@ def test_metrics_and_security_headers(client, reader_headers):
     assert response.headers["X-Frame-Options"] == "DENY"
 
 
-def test_resource_delete_requires_idle_resource(
-    client, admin_headers, operator_headers
-):
+def test_resource_delete_requires_idle_resource(client, admin_headers, operator_headers):
     create_resource(client, admin_headers)
     acquired = client.post(
         "/api/v1/resources/gpu-a/leases",
@@ -214,9 +208,7 @@ def test_resource_delete_requires_idle_resource(
     assert client.delete("/api/v1/resources/gpu-a", headers=admin_headers).status_code == 204
 
 
-def test_audit_records_resource_and_lease_events(
-    client, admin_headers, operator_headers
-):
+def test_audit_records_resource_and_lease_events(client, admin_headers, operator_headers):
     create_resource(client, admin_headers)
     client.post(
         "/api/v1/resources/gpu-a/leases",
@@ -228,9 +220,7 @@ def test_audit_records_resource_and_lease_events(
     assert {"resource.created", "lease.acquired"} <= event_types
 
 
-def test_fencing_token_increases_across_lease_holders(
-    client, admin_headers, operator_headers
-):
+def test_fencing_token_increases_across_lease_holders(client, admin_headers, operator_headers):
     create_resource(client, admin_headers)
 
     first = client.post(
@@ -260,9 +250,7 @@ def test_fencing_token_increases_across_lease_holders(
     assert resource["fencing_token"] == second_body["fencing_token"]
 
 
-def test_idempotent_replay_preserves_same_fencing_token(
-    client, admin_headers, operator_headers
-):
+def test_idempotent_replay_preserves_same_fencing_token(client, admin_headers, operator_headers):
     create_resource(client, admin_headers)
     headers = {**operator_headers, "Idempotency-Key": "fence-request-1"}
     body = {"owner": "team-a", "purpose": "fenced-job", "ttl_seconds": 300}

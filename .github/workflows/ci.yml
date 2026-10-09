@@ -51,7 +51,9 @@ jobs:
           python -m pip install -r requirements-dev.txt
 
       - name: Lint
-        run: python -m ruff check .
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
 
       - name: Migration validation
         run: |
