@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, MetaData, String, Table, Text
 

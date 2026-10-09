@@ -72,9 +72,7 @@ class ResourceService:
         lease_id = resource.get("active_lease_id")
         if not lease_id:
             return resource
-        lease = conn.execute(
-            sa.select(leases).where(leases.c.id == lease_id)
-        ).mappings().first()
+        lease = conn.execute(sa.select(leases).where(leases.c.id == lease_id)).mappings().first()
         if lease is None:
             conn.execute(
                 sa.update(resources)
@@ -126,9 +124,11 @@ class ResourceService:
     def resource_payload(self, conn, resource: dict[str, Any]) -> dict[str, Any]:
         active = None
         if resource.get("active_lease_id"):
-            lease = conn.execute(
-                sa.select(leases).where(leases.c.id == resource["active_lease_id"])
-            ).mappings().first()
+            lease = (
+                conn.execute(sa.select(leases).where(leases.c.id == resource["active_lease_id"]))
+                .mappings()
+                .first()
+            )
             if lease:
                 active = self.lease_payload(dict(lease))
         return {
@@ -155,9 +155,7 @@ class ResourceService:
         if not name.strip() or not kind.strip():
             raise ServiceError(400, "invalid_resource", "name and kind are required")
         with self.engine.begin() as conn:
-            if conn.execute(
-                sa.select(resources.c.id).where(resources.c.id == resource_id)
-            ).first():
+            if conn.execute(sa.select(resources.c.id).where(resources.c.id == resource_id)).first():
                 raise ServiceError(409, "resource_exists", "resource already exists")
             conn.execute(
                 sa.insert(resources).values(
@@ -176,12 +174,16 @@ class ResourceService:
 
     def get_resource(self, resource_id: str) -> dict[str, Any]:
         with self.engine.begin() as conn:
-            row = conn.execute(
-                sa.select(resources).where(
-                    resources.c.id == resource_id,
-                    resources.c.deleted_at.is_(None),
+            row = (
+                conn.execute(
+                    sa.select(resources).where(
+                        resources.c.id == resource_id,
+                        resources.c.deleted_at.is_(None),
+                    )
                 )
-            ).mappings().first()
+                .mappings()
+                .first()
+            )
             if row is None:
                 raise ServiceError(404, "resource_not_found", "resource not found")
             resource = self._expire_if_needed(conn, dict(row))
@@ -190,11 +192,15 @@ class ResourceService:
     def list_resources(self) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = []
         with self.engine.begin() as conn:
-            rows = conn.execute(
-                sa.select(resources)
-                .where(resources.c.deleted_at.is_(None))
-                .order_by(resources.c.id)
-            ).mappings().all()
+            rows = (
+                conn.execute(
+                    sa.select(resources)
+                    .where(resources.c.deleted_at.is_(None))
+                    .order_by(resources.c.id)
+                )
+                .mappings()
+                .all()
+            )
             for row in rows:
                 resource = self._expire_if_needed(conn, dict(row))
                 result.append(self.resource_payload(conn, resource))
@@ -230,17 +236,19 @@ class ResourceService:
                     "invalid_idempotency_key",
                     "idempotency key is too long",
                 )
-            record_key = hashlib.sha256(
-                f"{actor}:{idempotency_key}".encode()
-            ).hexdigest()
+            record_key = hashlib.sha256(f"{actor}:{idempotency_key}".encode()).hexdigest()
 
         with self.engine.begin() as conn:
             if record_key:
-                cached = conn.execute(
-                    sa.select(idempotency_records).where(
-                        idempotency_records.c.idempotency_key == record_key
+                cached = (
+                    conn.execute(
+                        sa.select(idempotency_records).where(
+                            idempotency_records.c.idempotency_key == record_key
+                        )
                     )
-                ).mappings().first()
+                    .mappings()
+                    .first()
+                )
                 if cached:
                     if cached["request_hash"] != request_hash:
                         raise ServiceError(
@@ -268,11 +276,15 @@ class ResourceService:
                             )
                         )
                 except IntegrityError:
-                    cached = conn.execute(
-                        sa.select(idempotency_records).where(
-                            idempotency_records.c.idempotency_key == record_key
+                    cached = (
+                        conn.execute(
+                            sa.select(idempotency_records).where(
+                                idempotency_records.c.idempotency_key == record_key
+                            )
                         )
-                    ).mappings().first()
+                        .mappings()
+                        .first()
+                    )
                     if cached is None:
                         raise ServiceError(
                             409,
@@ -293,12 +305,16 @@ class ResourceService:
                         ) from None
                     return json.loads(cached["response_json"]), True
 
-            row = conn.execute(
-                sa.select(resources).where(
-                    resources.c.id == resource_id,
-                    resources.c.deleted_at.is_(None),
+            row = (
+                conn.execute(
+                    sa.select(resources).where(
+                        resources.c.id == resource_id,
+                        resources.c.deleted_at.is_(None),
+                    )
                 )
-            ).mappings().first()
+                .mappings()
+                .first()
+            )
             if row is None:
                 raise ServiceError(404, "resource_not_found", "resource not found")
             resource = self._expire_if_needed(conn, dict(row))
@@ -349,9 +365,7 @@ class ResourceService:
                     "fencing_token": fencing_token,
                 },
             )
-            lease = conn.execute(
-                sa.select(leases).where(leases.c.id == lease_id)
-            ).mappings().one()
+            lease = conn.execute(sa.select(leases).where(leases.c.id == lease_id)).mappings().one()
             response = self.lease_payload(dict(lease))
             if record_key:
                 conn.execute(
@@ -370,9 +384,9 @@ class ResourceService:
 
     def release(self, lease_id: str, actor: str) -> dict[str, Any]:
         with self.engine.begin() as conn:
-            lease = conn.execute(
-                sa.select(leases).where(leases.c.id == lease_id)
-            ).mappings().first()
+            lease = (
+                conn.execute(sa.select(leases).where(leases.c.id == lease_id)).mappings().first()
+            )
             if lease is None:
                 raise ServiceError(404, "lease_not_found", "lease not found")
             if lease["status"] != "active":
@@ -396,17 +410,17 @@ class ResourceService:
                 resource_id=lease["resource_id"],
                 lease_id=lease_id,
             )
-            updated = conn.execute(
-                sa.select(leases).where(leases.c.id == lease_id)
-            ).mappings().one()
+            updated = (
+                conn.execute(sa.select(leases).where(leases.c.id == lease_id)).mappings().one()
+            )
             return self.lease_payload(dict(updated))
 
     def renew(self, lease_id: str, ttl_value: Any, actor: str) -> dict[str, Any]:
         ttl = self.ttl(ttl_value)
         with self.engine.begin() as conn:
-            lease = conn.execute(
-                sa.select(leases).where(leases.c.id == lease_id)
-            ).mappings().first()
+            lease = (
+                conn.execute(sa.select(leases).where(leases.c.id == lease_id)).mappings().first()
+            )
             if lease is None:
                 raise ServiceError(404, "lease_not_found", "lease not found")
             if lease["status"] != "active":
@@ -445,9 +459,9 @@ class ResourceService:
                 lease_id=lease_id,
                 detail={"ttl_seconds": ttl},
             )
-            updated = conn.execute(
-                sa.select(leases).where(leases.c.id == lease_id)
-            ).mappings().one()
+            updated = (
+                conn.execute(sa.select(leases).where(leases.c.id == lease_id)).mappings().one()
+            )
             return self.lease_payload(dict(updated))
 
     def list_leases(self, status: str | None, owner: str | None) -> list[dict[str, Any]]:
@@ -457,18 +471,13 @@ class ResourceService:
         if owner:
             statement = statement.where(leases.c.owner == owner)
         with self.engine.connect() as conn:
-            return [
-                self.lease_payload(dict(row))
-                for row in conn.execute(statement).mappings()
-            ]
+            return [self.lease_payload(dict(row)) for row in conn.execute(statement).mappings()]
 
     def audit(self, limit: int) -> list[dict[str, Any]]:
         limit = max(1, min(limit, 500))
         with self.engine.connect() as conn:
             rows = conn.execute(
-                sa.select(audit_events)
-                .order_by(audit_events.c.created_at.desc())
-                .limit(limit)
+                sa.select(audit_events).order_by(audit_events.c.created_at.desc()).limit(limit)
             ).mappings()
             return [
                 {
@@ -498,12 +507,16 @@ class ResourceService:
 
     def remove_resource(self, resource_id: str, actor: str) -> None:
         with self.engine.begin() as conn:
-            row = conn.execute(
-                sa.select(resources).where(
-                    resources.c.id == resource_id,
-                    resources.c.deleted_at.is_(None),
+            row = (
+                conn.execute(
+                    sa.select(resources).where(
+                        resources.c.id == resource_id,
+                        resources.c.deleted_at.is_(None),
+                    )
                 )
-            ).mappings().first()
+                .mappings()
+                .first()
+            )
             if row is None:
                 raise ServiceError(404, "resource_not_found", "resource not found")
             row = self._expire_if_needed(conn, dict(row))
@@ -512,7 +525,5 @@ class ResourceService:
             now = utcnow()
             self._audit(conn, "resource.deleted", actor, resource_id=resource_id)
             conn.execute(
-                sa.update(resources)
-                .where(resources.c.id == resource_id)
-                .values(deleted_at=now)
+                sa.update(resources).where(resources.c.id == resource_id).values(deleted_at=now)
             )

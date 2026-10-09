@@ -1,4 +1,4 @@
-﻿"""initial production schema
+"""initial production schema
 
 Revision ID: 0001_initial
 Revises:
