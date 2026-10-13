@@ -14,7 +14,7 @@ This project began as an IFT 510 Fall 2024 Flask/Docker resource-management lab.
 - lease a staging environment to one deployment job at a time
 - reserve specialized shared equipment for an automated workflow
 
-## Production guarantees
+## Implemented controls
 
 - one active lease per resource through an atomic conditional database update
 - lease TTLs so abandoned clients cannot hold a resource indefinitely
@@ -96,3 +96,7 @@ source, tests, scripts, examples, benchmarks, validation helpers, and poster gen
 where present. Ruff's standard exclusions omit version-control metadata, virtual
 environments, and build/cache directories; generated poster HTML/PDF/PNG assets are
 not Python source. Passing these static checks does not establish runtime behavior or product effectiveness.
+
+## Current local verification
+
+2026-10-13 UTC, Python 3.12.14; baseline `6777d6676c353e14d16d41d31a11bfd14575cc17` plus readiness regression fix. `python -m pytest -rA --cov=resource_control --cov-report=term`: **15 passed, 3 skipped**, 394/472 statements (83.47%). PostgreSQL integration and concurrency checks were skipped because `TEST_DATABASE_URL` was unavailable. Docker and Compose checks were blocked because Docker is not installed. Ruff 0.16.8 lint/format and Bandit 1.9.4 passed; the pinned Ruff 0.16.10 binary failed locally, so its exact CI check remains pending. `/readyz` checks database connectivity and required table presence; it does not certify migration revision or deployment reliability.

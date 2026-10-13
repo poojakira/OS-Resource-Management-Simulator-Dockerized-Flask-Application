@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from flask import Flask, Response, g, jsonify, render_template, request
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import Settings
@@ -176,6 +176,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         try:
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
+                if not set(metadata.tables).issubset(inspect(conn).get_table_names()):
+                    return jsonify(status="not_ready"), 503
             return jsonify(status="ready")
         except Exception:
             return jsonify(status="not_ready"), 503

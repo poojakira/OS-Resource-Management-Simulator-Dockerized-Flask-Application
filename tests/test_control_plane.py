@@ -63,6 +63,16 @@ def test_health_and_readiness_are_public(client):
     assert client.get("/readyz").status_code == 200
 
 
+def test_readiness_rejects_database_without_required_schema(app, client):
+    from resource_control.models import metadata
+
+    metadata.drop_all(app.extensions["resource_engine"])
+    assert client.get("/healthz").status_code == 200
+    response = client.get("/readyz")
+    assert response.status_code == 503
+    assert response.json == {"status": "not_ready"}
+
+
 def test_api_and_metrics_require_auth(client):
     assert client.get("/api/v1/resources").status_code == 401
     assert client.get("/metrics").status_code == 401
