@@ -1,4 +1,6 @@
-﻿# Resource Control Plane
+> **READ THIS LICENSE BEFORE USING THIS REPOSITORY.** Owner-controlled new releases are subject to the [proprietary All Rights Reserved LICENSE](LICENSE): copying, modification, and redistribution require written authorization except where law or GitHub's Terms allow. Previously granted MIT rights remain valid for versions covered by that license; see the [historical license](docs/license-history/LICENSE-BEFORE-2026-10-13.txt). Third-party rights remain unaffected.
+
+# Resource Control Plane
 
 A production-oriented lease service for coordinating exclusive shared resources such as GPU nodes, lab equipment, mobile test devices, staging environments, or other scarce assets.
 
@@ -79,7 +81,7 @@ The original coursework was completed Nov. 30-Dec. 1, 2024. The production contr
 
 ## License
 
-MIT.
+Proprietary / All Rights Reserved. See [LICENSE](LICENSE) and the [previous MIT license](docs/license-history/LICENSE-BEFORE-2026-10-13.txt).
 
 ## Product validation
 
