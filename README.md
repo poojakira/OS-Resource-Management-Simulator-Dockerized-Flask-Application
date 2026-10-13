@@ -12,7 +12,7 @@ This project began as an IFT 510 Fall 2024 Flask/Docker resource-management lab.
 - lease a staging environment to one deployment job at a time
 - reserve specialized shared equipment for an automated workflow
 
-## Production guarantees
+## Implemented lease invariants and deployment controls
 
 - one active lease per resource through an atomic conditional database update
 - lease TTLs so abandoned clients cannot hold a resource indefinitely
